@@ -1,0 +1,556 @@
+/**
+ *	\mainpage NexPlayer&trade;&nbsp;Engine
+ *   
+ * \section legal Legal Notices
+ *
+ * \par Disclaimer for Intellectual property
+ * <i>This product is designed for general purpose, and accordingly customer is 
+ * responsible for all or any of intellectual property licenses required for 
+ * actual application. Nextreaming Corporation does not provide any 
+ * indemnification for any intellectual properties owned by third party.</i>
+ * 
+ * \par Copyright
+ * Copyright for all documents, drawings and programs related with this 
+ * specification are owned by Nextreaming Corporation. All or any part of the 
+ * specification shall not be reproduced nor distributed without prior written 
+ * approval by Nextreaming Corporation. Content and configuration of all or any
+ * part of the specification shall not be modified nor distributed without prior 
+ * written approval by Nextreaming Corporation.
+ * 
+ * \par
+ * &copy;&nbsp;Copyright 2010-2011 Nextreaming Corporation. All rights reserved.
+ *  
+ * \section abstract Abstract
+ *
+ *	NexPlayer&trade; provides audio and video decoding and playback services
+ *  that application developers can use to build custom multimedia players
+ *  rapidly and efficiently. NexPlayer&trade; has been built to be reliable 
+ *  and robust without any sacrifice in performance, and has proven compatibility with 
+ *  international standards.<p>	
+ *	
+ *	This documentation is a work in progress.<p>  
+ *
+ *	Additional details and sample code will continue to be added.<p>
+ *	
+ *	Recent updates include information about properties and RTSP headers, updated
+ *	documentation on the new rendering framework, more details on the <code>IListener</code> interface,
+ *	and information on the new content information structure (which now includes track information)<p>
+ *	
+ *	There are still some methods of the <code>IListener</code> interface that are not fully documented.  
+ *	However,
+ *	the key methods needed for playback are documented, and combined with the example
+ *	code, this should provide enough information to implement this interface. More
+ *	detailed documentation will be added in the future.<p>
+ *		 
+ * \section support NexPlayer&trade;   capabilities and limitations
+ *     
+ *  
+ * Chipsets
+ *      <ul><li> Software specifically optimized for ARM devices: ARM9, ARM11, Cortex-A8/9 </li></ul>
+ * Operating Systems
+ *      <ul><li> Android 1.6 and above </li></ul> 
+ * Protocols
+ *      <ul> 
+ *      <li> HTTP Live Streaming (IETF draft-pantos-http-live-streaming-04) </li>
+ *      <li> Smooth Streaming ( [MS-SSTR] Smooth Streaming Protocol) </li>
+ *      <li> 3GPP Progressive Download </li>
+ *      <li> Local file formats: .mp4, .3gp, .avi, .wmv, .asf, .wma, .piff </li>
+ *      <li> AES128 </li>
+ *      <li> HTTPS </li>
+ *      </ul> 
+ * Codecs
+ *      <ul> 
+ *      <li> H.264 Baseline Profile </li>
+ *      <li> WMV: VC-1 Simple Profile, Main Profile, Advanced Profile </li>
+ *      <li> AAC, AAC+, eAAC+, MP3, WMA9 Standard, WMA10 Pro </li>
+ *      </ul> 	  
+ *
+ *	\section mediaplay Media Playback
+ *
+ *	Playback is controlled through the {@link com.nextreaming.nexplayerengine.NexPlayer NexPlayer} class, which 
+ *	handles acquisition and decoding of the media data.  The application creates 
+ *	an instance of this class and issues commands to it by calling instance 
+ *	methods.  NexPlayer&trade; carries out these commands asynchronously and 
+ *	notifies the application of changes in status.<p>
+ *	
+ *	The application is also notified when NexPlayer needs a surface on which to display video
+ *	or an audio track object through which to play audio.  The application must create the
+ *	relevant objects when necessary or supply references to existing instances that NexPlayer
+ *	can use.  For more information, see the IListener::onVideoRenderCreate
+ *	  {@link com.nextreaming.nexplayerengine.NexPlayer.IListener#onVideoRenderCreate onVideoRenderCreate}, 
+ *	    {@link com.nextreaming.nexplayerengine.NexPlayer.IListener#onVideoRenderRender onVideoRenderRender}, 
+ *	  {@link com.nextreaming.nexplayerengine.NexPlayer.IListener#onVideoRenderDelete onVideoRenderDelete}, 
+ *	  {@link com.nextreaming.nexplayerengine.NexPlayer.IListener#onAudioRenderCreate onAudioRenderCreate}, and 
+ *	  {@link com.nextreaming.nexplayerengine.NexPlayer.IListener#onAudioRenderDelete onAudioRenderDelete}
+ *	methods in {@link com.nextreaming.nexplayerengine.NexPlayer.IListener IListener}.<p>
+ *	
+ *	It is possible to set certain properties on the NexPlayer instance, which affect
+ *	how media is played back, how audio/video synchronization is handled, which player
+ *	features are enabled, and so on.  In general, the default property settings are 
+ *	suitable for most applications.  However, if you are developing a streaming media
+ *	application that uses HLS (HTTP Live Streaming), you may want to adjust the buffering time.<p>
+ *	
+ *	For more information on properties, see {@link com.nextreaming.nexplayerengine.NexPlayer.NexProperty NexProperty}.<p>
+ *	
+ *	The application may also need to handle displaying of decoded frames, if the Java rendering method
+ *	is being used.  This is necessary to support Honeycomb.  See <a href="#honeycomb">Honeycomb Support</a>
+ *	for more details.<p> 
+ *	
+ *	Notifications are handled through the 
+ *	{@link com.nextreaming.nexplayerengine.NexPlayer.IListener IListener} interface.
+ *	The application <i>must</i> provide an object which implements this interface,
+ *	and must call {@link com.nextreaming.nexplayerengine.NexPlayer#setListener setListener}
+ *	to associate it with the <code>NexPlayer</code> instance.  <i>This must be the first thing the 
+ *	application does after instantiating NexPlayer, before calling any other 
+ *	methods.</i><p>
+ *	
+ *	Once the event listener interface has been set up, the application may call
+ *	methods on the <code>NexPlayer</code> object to control the media source.
+ *	Certain calls, such as <code>open</code> and <code>close</code> must be
+ *	given in matched pairs. The basic structure of calls for media playback is as follows:<p>
+ *	
+ *	<ul>
+ *	  <li>{@link com.nextreaming.nexplayerengine.NexPlayer#open(String, String, int, int, int) NexPlayer.open(String, String, int, int, int)}</li>
+ *	  <ul>
+ *	    <li>{@link com.nextreaming.nexplayerengine.NexPlayer#start(int) NexPlayer.start(int)}</li>
+ *		   <ul>
+ *	      <li>{@link com.nextreaming.nexplayerengine.NexPlayer#pause() NexPlayer.pause()}</li>
+ *	      <li>{@link com.nextreaming.nexplayerengine.NexPlayer#seek(int) NexPlayer.seek(int)}</li>
+ *	      <li>{@link com.nextreaming.nexplayerengine.NexPlayer#seekTo(int, int) NexPlayer.seekTo(int, int)}</li>
+ *	      <li>{@link com.nextreaming.nexplayerengine.NexPlayer#resume() NexPlayer.resume()}</li>
+ *	    </ul>
+ *	    <li>{@link com.nextreaming.nexplayerengine.NexPlayer#stop() NexPlayer.stop()}</li>
+ *	  </ul>
+ *	  <li>{@link com.nextreaming.nexplayerengine.NexPlayer#close() NexPlayer.close()}</li>
+ *	</ul>
+ *
+ *	\section honeycomb Honeycomb Support
+ *	
+ *	Under the <i>Honeycomb</i> version of the Android operating system, only the OpenGL ES 2.0 or
+ *  Java-based video renderers are currently supported.  Both of these renderers require
+ *  supporting code in the application.  This means that in order to support Honeycomb, you must
+ *	implement either OpenGL ES 2.0 or Java renderer support in your application.  For other Android 
+ *  OS versions, this is not necessary, although on some devices there may be performance advantages
+ *  from using the OpenGL ES 2.0 renderer.  While either the OpenGL ES 2.0 renderer or the Java
+ *  renderer will work on Honeycomb, it is recommended to use the OpenGL ES 2.0 renderer, as
+ *  performance is generally better with that renderer, and implementation is easier.<p>
+ *	
+ *	See \ref glrenderer and \ref javarenderer for details.<p>
+ *	
+ *	In addition, use caution with the following APIs on Honeycomb:
+ *	<ul>
+ *	<li>{@link com.nextreaming.nexplayerengine.NexPlayer#setOutputPos(int, int, int, int) setOutputPos} is
+ *      not supported with the Java renderer.
+ *		For this same functionality, you pay perform scaling yourself in the <code>onVideoRenderRender</code>
+ *		callback (see the Java Renderer explanation for details).  You may call this from the OpenGL
+ *      renderer.</li>
+ *	<li>{@link com.nextreaming.nexplayerengine.NexPlayer#setDisplay(SurfaceHolder) setDisplay} is not
+ *      supported on Honeycomb at all and must not be called.  It is also not supported by the OpenGL
+ *      renderer and must not be called if the OpenGL renderer is being used.</li>
+ *	</ul>
+ *
+ *
+ *  \section glrenderer OpenGL Renderer
+ *
+ *	This version of the NexPlayer&trade; engine supports OpenGL ES 2.0 rendering.  This is the default
+ *  renderer for Froyo and later.  If this is not implemented by the application, another renderer must
+ *  be specifically requested when calling NexPlayer&trade;'s {@link com.nextreaming.nexplayerengine.NexPlayer#init(Context,String,int,int) init}
+ *  method.<p>
+ *
+ *  To use the OpenGL renderer, the application must create an instance of the GLRenderer class (supplied
+ *  as part of the NexPlayer&trade; SDK). GLRenderer is a GLSurfaceView subclass, and the video
+ *  frame will be displayed within it. By default, the
+ * frame is stretched to fill the entire surface.  The rectangle in which the video is drawn can be
+ * changed by calling {@link com.nextreaming.nexplayerengine.NexPlayer#setOutputPos(int, int, int, int) setOutputPos}.
+ * This rectangle is in screen pixels (not in the OpenGL coordinate space) but the position is relative to
+ * the GLRenderer.<p>
+ *
+ * In addition, an app must also do the following, in order to
+ * support the OpenGL renderer:
+ *
+ * -# Call NexPlayer's {@link com.nextreaming.nexplayerengine.NexPlayer#init(Context,String,int,int) init}
+ *    method, passing the model name of the current device (you can attempt to force the use of the OpenGL renderer
+ *    for debugging purposes by passing \c NEX_DEVICE_USE_OPENGL instead of the device name.
+ * -# After initializing NexPlayer&trade;, check which renderer is being used to determine if it is the
+ *    OpenGL renderer.  Any special code to suppoort the OpenGL renderer should be conditional based on the
+ *    renderer in use.  To determine the current renderer in use, call {@link com.nextreaming.nexplayerengine.NexPlayer#GetRenderMode() GetRenderMode}
+ *    and check the result, as follows:
+ *		\code
+ *		if(mNexPlayer.GetRenderMode() == NexPlayer.NEX_USE_RENDER_OPENGL) {
+ *			UseOpenGL = true;
+ *		}
+ *		\endcode
+ * -# Create an instance of the GLRenderer class and add it to the main view for the activity or some other visible view in your layout:
+ *		\code
+ *		if(UseOpenGL) {
+ *			mContext = this;
+ *          		mGLListener = this;
+ *			glRenderer = new GLRenderer(mContext, mNexPlayer, mGLListener, colorDepth);
+ *			FrameLayout v = (FrameLayout)findViewById(R.id.gl_container);	
+ *			v.addView(glRenderer);
+ *		}
+ *		\endcode
+ *	  \note Once the GLRenderer has been created, the \c onSurfaceCreated and \c onSurfaceChanged methods of
+ *    GLSurfaceView.Renderer will be automatically called.  \c onSurfaceChanged is also called when the
+ *    size of the surface has changed (for example, due to a device orientation change).
+ * -# In the implementation of \c GLSurfaceView.Renderer.onSurfaceChanged, {@link com.nextreaming.nexplayerengine.NexPlayer#GLInit(int int) NexPlayer.GLInit}
+ *    must be called to inform NexPlayer&trade; of the new size of the surface:
+ * \code
+	public void onSurfaceChanged(GL10 gl, int width, int height) {
+		mNexPlayer.GLInit(width, height);
+	}
+ * \endcode
+ * -# In {@link com.nextreaming.nexplayerengine.NexPlayer.IListener#onVideoRenderCreate onVideoRenderCreate}, the dimensions
+ *	  of the video frame are known, so scaling calculations can be performed and the correct output size can be set:
+ *    \code
+ *    if(nRenderMode != NexPlayer.NEX_USE_RENDER_JAVA) {
+ *        int left = (mSurfaceWidth - mVideoWidth) / 2;
+ *        int top = (mSurfaceHeight - mVideoHeight) / 2;
+ *        mNexPlayer.setOutputPos( left, top, mVideoWidth, mVideoHeight );
+ *    }
+ *    \endcode
+ * -# When NexPlayer&trade; is ready to display a new frame, it calls 
+ *    {@link com.nextreaming.nexplayerengine.NexPlayer.IListener#onVideoRenderRender onVideoRenderRender}.
+ *    For most rendering modes, there is nothing to be done in reponse, but for OpenGL, it is necessary
+ *    to request a rendering pass from the GLRenderer as follows:
+ *    \code
+ *    if(UseOpenGL) {
+ *        glRenderer.requestRender();
+ *    }
+ *    \endcode
+ *    This causes the GLRenderer to render its contents.
+ *
+ *	\section javarenderer Java Renderer
+ *
+ *	This version of the NexPlayer&trade; engine supports Java-based rendering in addition to the usual
+ *	video rendering methods.  However, the Java renderer is never automatically selected; if you wish
+ *  to use the Java-based renderer, you must explicitly request it when calling NexPlayer&trade;'s \c init method.<p>
+ *	
+ *	With Java-based rendering, NexPlayer&trade; doesn't display the video after it is decoded, but
+ *	rather passes each frame to the application, which then must display the frames as they are
+ *	received.<p>
+ *	
+ *	Java-based rendering tends to be slower, particularly on low-end devices, but allows the
+ *	application to perform post-processing or custom scaling operations on each frame.<p>
+ *	
+ *	On the <i>Honeycomb</i> operating system, only Java-based rendering or OpenGL renderer is supported. 
+ *  Therefore, in order to support Honeycomb, your application must implement one of the two.<p>
+ *	
+ *	If for some reason, you wish to force the use of the Java renderer, you can do so by passing
+ *	{@link com.nextreaming.nexplayerengine.NexPlayer#NEX_DEVICE_USE_JAVA NexPlayer.NEX_DEVICE_USE_JAVA}
+ *	to NexPlayer's {@link com.nextreaming.nexplayerengine.NexPlayer#init(Context,String,int,int) init}
+ *	method.<p>
+ *	
+ *	To support the Java renderer, the application must do the following:<p>
+ *
+ *	<ul>
+ *	<li><p>In {@link com.nextreaming.nexplayerengine.NexPlayer.IListener#onVideoRenderCreate onVideoRenderCreate}, the 
+ *		application must create a bitmap
+ *		that NexPlayer&trade; can render frames into.</p>
+ *		<p>NexPlayer&trade; can render in either RGBA8888 or RGB565.  The color depth is specified in the call to
+ *		 NexPlayer's {@link com.nextreaming.nexplayerengine.NexPlayer#init(Context,String,int,int) init}
+ *		method. The bitmap you create here must match that color depth.  Once the bitmap has been
+ *		created, it must be registered with the player engine by calling {@link com.nextreaming.nexplayerengine.NexPlayer#SetBitmap SetBitmap}</p>
+ *		<p>Here's the recommended way to support the Java renderer in <code>onVideoRenderCreate</code>:</p>
+ *		<pre>
+ *		
+ *		private ByteBuffer mRGBBuffer = null;
+ *		private Bitmap mFrameBitmap = null;
+ *		
+ *		public void onVideoRenderCreate(
+ *			NexPlayer mp, int width, int height,
+ *			Object rgbBuffer) 
+ *		{
+ *		
+ *			// ...other necessary onVideoRenderCreate code goes here...
+ *			
+ *			if(mNexPlayer.GetRenderMode() == NexPlayer.NEX_USE_RENDER_JAVA)
+ *			{
+ *				if(this.mScreenPixelFormat == PixelFormat.RGBA_8888)
+ *				{
+ *					mFrameBitmap = Bitmap.createBitmap(width, height, Config.ARGB_8888 );
+ *				}
+ *				else
+ *				{
+ *					mFrameBitmap = Bitmap.createBitmap(width, height, Config.RGB_565 );
+ *				}
+ *				mNexPlayer.SetBitmap( mFrameBitmap );
+ *			}
+ *		}
+ *		</pre>
+ *		</li>
+ *	<li>The application must implement {@link com.nextreaming.nexplayerengine.NexPlayer.IListener#onVideoRenderRender onVideoRenderRender}.
+ *		The bitmap registered in onVideoRenderCreate will have been filled in with the rendered frame before this method
+ *		was called.  The application must draw that bitmap to the screen, taking into account scaling and other factors.  This can be done using standard
+ *		Android API calls and standard Java methods.  Scaling should be taken into account.  See the sample application that
+ *		accompanies the SDK for an example implementation of this method.</li>
+ *	</ul>      
+ *	
+ *	<b>Determining the Renderer:</b>  To determine the current renderer in use, call 
+ *	{@link com.nextreaming.nexplayerengine.NexPlayer#GetRenderMode() GetRenderMode}. For example, to determine
+ *	if the Java renderer is in use:
+ *	<pre>
+ *	  if(mNexPlayer.GetRenderMode() == NexPlayer.NEX_USE_RENDER_JAVA) {
+ *	    // code for Java renderer only 
+ *	  }
+ *	</pre>
+ *
+ *	\section hwrender Hardware Renderer and Hardware Codec Support
+ *
+ *	Some editions of the NexPlayer&trade;&nbsp;SDK include hardware renderer and
+ *  hardware codec support.  To use this support, you must specify a configuration
+ *  file using {@link com.nextreaming.nexplayerengine.NexPlayer::SetConfigFilePath SetConfigFilePath} and you must provide an appropriate
+ *  surface for the player to render in.  If no configuration file is specified,
+ *  the hardware renderer will not be used.
+ *  
+ *  Use of the hardware renderer is determined automatically based on the
+ *  device and content.
+ *
+ *  The hardware renderer requires a surface of the type \c SURFACE_TYPE_PUSH_BUFFERS,
+ *  while the other renderers all require a surface of the type \c SURFACE_TYPE_NORMAL.
+ *  
+ *  Because the selection of the renderer depends on the content, it is necessary to
+ *  check which renderer was selected <i>after</i> the content has been opened (when
+ *  {@link com.nextreaming.nexplayerengine.NexPlayer.IListener::onAsyncCmdComplete onAsyncCmdComplete} is called with \c NEXPLAYER_ASYNC_CMD_OPEN_LOCAL, 
+ *  \c NEXPLAYER_ASYNC_CMD_OPEN_STREAMING, or \c NEXPLAYER_ASYNC_CMD_OPEN_TV).
+ *
+ *  The renderer can be checked by calling {@link com.nextreaming.nexplayerengine.NexPlayer::GetRenderMode GetRenderMode}.  Because the surface
+ *  type cannot be changed after the surface is created, applications should create one
+ *  surface of each type, and then hide the unused surface.  The surface to be used should
+ *  be specified in the call to {@link com.nextreaming.nexplayerengine.NexPlayer::setDisplay setDisplay}.
+ *
+ *  For example, the surfaces could be configured initially as follows:
+ * \code
+ 	SurfaceView mPushBuffersSurfaceView = 
+ 	   (SurfaceView)findViewById(/* insert view ID here */);
+ 	SurfaceView mNormalSurfaceView = 
+ 	   (SurfaceView)findViewById(/* insert view ID here */);
+
+	SurfaceHolder mPushBuffersSurfaceHolder = mPushBuffersSurfaceView.getHolder();
+	SurfaceHolder mNormalSurfaceHolder = mNormalSurfaceView.getHolder();
+ 
+	mPushBuffersSurfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+	mNormalSurfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_NORMAL);   
+ *  \endcode
+ * 
+ *  Then, when the open operation has completed (in \c onAsyncCmdComplete) the appropriate
+ *  surface could be selected as follows:
+ *  \code
+ 	if(mNexPlayer.GetRenderMode() == NexPlayer.NEX_USE_RENDER_HW)
+ 	{
+ 		mNexPlayer.setDisplay(mPushBuffersSurfaceHolder);
+ 		mPushBuffersSurfaceView.setVisibility(VISIBLE);
+ 		mNormalSurfaceView.setVisibility(INVISIBLE);
+	}
+	else
+	{
+ 		mNexPlayer.setDisplay(mNormalSurfaceHolder);
+ 		mPushBuffersSurfaceView.setVisibility(INVISIBLE);
+ 		mNormalSurfaceView.setVisibility(VISIBLE);
+	}
+ *  \endcode
+ *
+ *  \section crashlog Recording Recent Log Output When an Exception Occurs
+ *  
+ *  In the event of a crash or exception, NexPlayer can save the most recent <b>adb logcat</b> entries to a file on the SD card.
+ *  Currently, a maximum of 60kb worth of log entries can be saved per crash, although that number may be changed in future versions.<p>
+ *   This behavior is disabled by default.  In order to enable the saving of log entries when your application stops due to a crash or exception,<br>
+ *    you have to make the following changes to your application:<p>
+ *  
+ *  <OL>
+ *      <li>Import the (provided) "NexLogger.jar" file into your android project,</li><p>
+ *      <li>Your application will use the <i>android.permission.READ_LOGS permission</i>.  To indicate this, add the following line to your application's manifest:<br> 
+ *         <code>    <uses-permission android:name="android.permission.READ_LOGS"></uses-permission></code></li><p>    
+ *      <li> You must declare the logging service in the application manifest, by adding the following code to the manifest:  <br> 
+ *          <code> 
+ *          <service android:name="com.nextreaming.nexlogger.NexLogService" android:enabled="true"<br>
+ *          &nbsp;&nbsp;  android:process=":remote"><br>
+ *          &nbsp;&nbsp;&nbsp;&nbsp;    <intent-filter><br>
+ *          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;        <action android:name="com.nextreaming.nexlogger.NexLogService" /><br>
+ *          &nbsp;&nbsp;&nbsp;&nbsp;    </intent-filter><br>
+ *          </service><br>
+ *          </code></li><p>              
+ *   <li> In your activity subclass (the one that implements NexPlayer.IListener and SurfaceHolder.Callback) you must make the following changes:<p>
+ *
+ *    i)  In the beginning of the <b>onCreate</b> method, add:<br>
+ *        &nbsp;&nbsp;&nbsp;&nbsp;NexLogRecorder.getInstance().startLogging(this);<p>
+ *
+ *   ii)  In the beginning of the <b>onStop</b> method, add:<br>
+ *       &nbsp;&nbsp;&nbsp;&nbsp;NexLogRecorder.getInstance().stopLogging();<p>  
+ *
+ *   You will also need to import the following classes:<br>
+ *
+ *    &nbsp;&nbsp;&nbsp;&nbsp;java.io.UnsupportedEncodingException<br>      
+ *   &nbsp;&nbsp;&nbsp;&nbsp;com.nextreaming.nexlogger.NexLogRecorder</li>
+ *  </OL><p>
+ *  
+ *  After completing these changes, recent <b>adb logcat</b> output will be saved whenever a crash occurs.  Logs will be saved on the SD card, in the following location:<br>
+ *
+ *  &nbsp;&nbsp;&nbsp;&nbsp;/sdcard/Android/data/NexPlayer/<p><p>  
+ *    
+ *	\section codeclibs Selective Codec Support
+ *
+ *	If your application is too large, you can reduce the size by removing NexPlayer&trade; components
+ *	that you are not using.<p>
+ *	
+ *	NexPlayer&trade; comprises a total of 31 libraries (excluding DRM sample libraries). 
+ *	Of these, four libraries are always required (these comprise the engine and the rendering layer).  The
+ *	remaining libraries provide support for various codecs.<p>
+ *	
+ *	NexPlayer&trade; dynamically loads codec support only for those libraries that it finds during 
+ *	initialization, so you can safely delete any library that you don't need, and NexPlayer&trade; will simply
+ *	load without support for the codecs provided by that library.<p>
+ *	
+ *	The libraries are located in the <code>libs</code> folder in your project.<p>
+ *	
+ *	The following table summarizes the codecs supported by each library, and the libraries required
+ *	to support each protocol type.
+ *
+ *  \htmlonly 
+ *	<table border=1 cellpadding=2 cellspacing=0>
+ *	<tr style="background: #ddeeff;">
+ *		<td colspan=2>Codec Library</td>
+ *		<td align=center>Local</td>
+ *		<td align=center>PD</td>
+ *		<td align=center>RTSP</td>
+ *		<td align=center>WMS</td>
+ *		<td align=center>HLS</td>
+ *		<td align=center>MS Smooth Streaming</td>
+ *		<td align=center>Supported Codecs</td>
+ *	</tr>
+ *	
+ *	<tr>
+ *		<td rowspan=4>Video</td>
+ *		<td >libnexcal_h264_armv?.so</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td >H.264 Baseline profile</td>
+ *	</tr>
+ *	
+ *	<tr style="background: #ffeedd;">
+ *		<td >libnexcal_divx_armv?.so</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>X</td>
+ *		<td align=center>X</td>
+ *		<td align=center>X</td>
+ *		<td align=center>X</td>
+ *		<td >DivX, Xvid, MPEG-4 Video, H.263</td>
+ *	</tr>
+ *	
+ *	<tr>
+ *		<td >libnexcal_wmv_armv?.so</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>X</td>
+ *		<td align=center>O</td>
+ *		<td align=center>X</td>
+ *		<td align=center>O</td>
+ *		<td >WMV7, WMV8</td>
+ *	</tr>
+ *	
+ *	<tr style="background: #ffeedd;">
+ *		<td >libnexcal_wvc1_armv?.so</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>X</td>
+ *		<td align=center>O</td>
+ *		<td align=center>X</td>
+ *		<td align=center>O</td>
+ *		<td >WMV9, VC-1(WMV9 Advanced Profile)</td>
+ *	</tr>
+ *	
+ *	<tr>
+ *		<td rowspan=5>Audio</td>
+ *		<td >libnexcal_aac_armv?.so</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td >AAC, AAC-Plus, HE-AAC</td>
+ *	</tr>
+ *	
+ *	<tr style="background: #ffeedd;">
+ *		<td >libnexcal_mp3_armv?.so</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>X</td>
+ *		<td align=center>X</td>
+ *		<td align=center>O</td>
+ *		<td align=center>X</td>
+ *		<td >MP2,MP3</td>
+ *	</tr>
+ *	
+ *	<tr>
+ *		<td >libnexcal_wma_armv?.so</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>X</td>
+ *		<td align=center>O</td>
+ *		<td align=center>X</td>
+ *		<td align=center>O</td>
+ *		<td >WMA</td>
+ *	</tr>
+ *	
+ *	<tr style="background: #ffeedd;">
+ *		<td >libnexcal_amr_armv?.so</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>X</td>
+ *		<td align=center>X</td>
+ *		<td >AMR-Narrow band</td>
+ *	</tr>
+ *	
+ *	<tr>
+ *		<td >libnexcal_amrwb_armv?.so</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>O</td>
+ *		<td align=center>X</td>
+ *		<td align=center>X</td>
+ *		<td >AMR-Wide band</td>
+ *	</tr>
+ *	
+ *	</table>	 
+ *  \endhtmlonly
+ *
+ *  \latexonly 	 
+ *
+ *      \begin{tabular}{|c|c|c|c|c|c|c|p{15mm}|p{25mm}|}
+ *          \hline 
+ *          \multicolumn{2}{|c|}{Codec Library} & Local & PD & RTSP & WMS & HLS & MS Smoth Streaming & Supported Codecs \\
+ *          \hline
+ *          Video & libnexcal\_h264\_armv?.so & O & O & O & O & O & O & H.264 Baseline profile \\ \cline{2-9}
+ *              & libnexcal\_divx\_armv?.so & O & O & X & X & X & X & DivX, Xvid, MPEG-4 Video, H.263 \\ \cline{2-9}
+ *              & libnexcal\_wmv\_armv?.so & O & O & X & O & X & O & WMV7, WMV8 \\ \cline{2-9}
+ *              & libnexcal\_wvc1\_armv?.so & O & O & X & O & X & O & WMV9, VC-1(WMV9 Advanced Profile) \\ \cline{2-9}   
+ *          \hline
+ *          Audio & libnexcal\_aac\_armv?.so & O & O & O & O & O & O & AAC, AAC-Plus, HE-AAC \\ \cline{2-9}
+ *              & libnexcal\_mp3\_armv?.so & O & O & X & X & O & X & MP2, MP3 \\ \cline{2-9}
+ *              & libnexcal\_wma\_armv?.so & O & O & X & O & X & O & WMA \\ \cline{2-9}
+ *              & libnexcal\_amr\_armv?.so & O & O & O & O & X & X & AMR-Narrow band \\ \cline{2-9}
+ *              & libnexcal\_amrwb\_armv?.so & O & O & O & O & X & X & AMR-Wide band \\ \cline{2-9}             
+ *          \hline                                 
+ *      \end{tabular}
+ *     
+ *  \endlatexonly
+ *  
+ *  \htmlonly   
+ *  <p> 
+ *  <b>Author : </b> <p>&nbsp;&nbsp;&nbsp;&nbsp;Nextreaming Corporation
+ *  <p> 
+ *  <b>Version : </b> <p>&nbsp;&nbsp;&nbsp;&nbsp;1.3 
+ *  \endhtmlonly 
+ *
+ */	
+
+
